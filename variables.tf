@@ -45,3 +45,13 @@ variable "ssh_pubkey" {
   description = "Public key to place on EC2 nodes for SSH logins"
   type = string
 }
+
+variable "active_directory_domain" {
+  type = string 
+  default = "mydomain.local"
+}
+
+variable "active_directory_netbios_name" {
+  type = string
+  default = "mydomain"
+}
