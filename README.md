@@ -12,5 +12,5 @@ Deploy a domain controller to AWS using a [packer AMI](https://github.com/andyba
 - [powershell via ec2 userdata example](https://realworldit.net/archives/923)
 
 # ToDo's
-- [] Create AWS public key and output private key; see ec2 instance hard coded "RDP" in main.tf
-- [] Add userdata script for domain controller promotion via powershell
+- [ ] Create AWS public key and output private key; see ec2 instance hard coded "RDP" in main.tf
+- [ ] Add userdata script for domain controller promotion via powershell
