@@ -83,7 +83,7 @@ resource "aws_key_pair" "rdp-key" {
   public_key = tls_private_key.rsa-4096-key.public_key_openssh
 }
 
-// THIS IS NOT secure but we will need the private key to retrieve the local admin password from AWS
+// THIS IS NOT secure but we may need the private key to retrieve the local admin password from AWS
 output "private-key" {
   value = nonsensitive(tls_private_key.rsa-4096-key.private_key_pem)
 }
@@ -93,7 +93,6 @@ resource "aws_instance" "domain_controller" {
   instance_type          = var.domain_controller_instance_type
   vpc_security_group_ids = [aws_security_group.rdp_ingress.id, aws_security_group.allow_all_internal.id]
   key_name               = aws_key_pair.rdp-key.key_name
-  count                  = var.domain_controller_count
 
    root_block_device {
     volume_type           = "gp2"
@@ -107,6 +106,7 @@ resource "aws_instance" "domain_controller" {
                   $password = ConvertTo-SecureString ${var.admin_password} -AsPlainText -Force
                   Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
                   Install-ADDSForest -CreateDnsDelegation:$false -DomainMode Win2012R2 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode Win2012R2 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
+                  Set-ADAccountPassword -Identity 'CN=Administrator,OU=Users,DC=mydomain,DC=local' -Reset -NewPassword $password -Force
                 </powershell>
               EOF
   
@@ -116,6 +116,10 @@ resource "aws_instance" "domain_controller" {
     http_endpoint          = "enabled"
     instance_metadata_tags = "enabled"
   }
+}
+
+output "public-dns-address" {
+  value = aws_instance.domain_controller.public_dns
 }
 
 /*
