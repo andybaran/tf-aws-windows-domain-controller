@@ -55,3 +55,7 @@ variable "active_directory_netbios_name" {
   type = string
   default = "mydomain"
 }
+
+variable "admin_password" {
+  type = string
+}

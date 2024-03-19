@@ -6,7 +6,7 @@ data "aws_vpc" "default" {
   default = true
 }
 
-
+// Allow RDP traffic in and out to from IP's on the allowlist
 resource "aws_security_group" "rdp_ingress" {
   name   = "${var.name}-rdp-ingress"
   vpc_id = data.aws_vpc.default.id
@@ -25,7 +25,8 @@ resource "aws_security_group" "rdp_ingress" {
     protocol    = "udp"
     cidr_blocks = [var.allowlist_ip]
   }
-
+  
+  /*
   ingress {
     from_port = 0
     to_port   = 0
@@ -33,6 +34,7 @@ resource "aws_security_group" "rdp_ingress" {
     cidr_blocks = [var.allowlist_ip]
   }
 
+  
   ingress {
     from_port = 0
     to_port   = 0
@@ -46,6 +48,7 @@ resource "aws_security_group" "rdp_ingress" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  */
 }
 
 resource "aws_security_group" "allow_all_internal" {
@@ -67,11 +70,29 @@ resource "aws_security_group" "allow_all_internal" {
   }
 }
 
+
+// We need a keypair to obtain the local administrator credentials to an AWS Windows based EC2 instance
+resource "tls_private_key" "rsa-4096-key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+// Share our keypair with AWS
+resource "aws_key_pair" "rdp-key" {
+  key_name = "RDeeP"
+  public_key = tls_private_key.rsa-4096-key.public_key_openssh
+}
+
+// THIS IS NOT secure but we will need the private key to retrieve the local admin password from AWS
+output "private-key" {
+  value = nonsensitive(tls_private_key.rsa-4096-key.private_key_pem)
+}
+
 resource "aws_instance" "domain_controller" {
   ami                    = var.ami
   instance_type          = var.domain_controller_instance_type
   vpc_security_group_ids = [aws_security_group.rdp_ingress.id, aws_security_group.allow_all_internal.id]
-  key_name               = "RDP"
+  key_name               = aws_key_pair.rdp-key.key_name
   count                  = var.domain_controller_count
 
    root_block_device {
@@ -80,15 +101,16 @@ resource "aws_instance" "domain_controller" {
     delete_on_termination = "true"
   }
 
-  /*
-  user_data = templatefile("${path.module}/data-scripts/user-data-server.sh", {
-    domain_controller_count              = var.domain_controller_count
-    region                    = var.region
-    cloud_env                 = "aws"
-
-  })
-  */
-  iam_instance_profile = aws_iam_instance_profile.instance_profile.name
+  user_data = <<EOF
+                <powershell>
+                  Import-Module ADDSDeployment
+                  $password = ConvertTo-SecureString ${var.admin_password} -AsPlainText -Force
+                  Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
+                  Install-ADDSForest -CreateDnsDelegation:$false -DomainMode Win2012R2 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode Win2012R2 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
+                </powershell>
+              EOF
+  
+ // iam_instance_profile = aws_iam_instance_profile.instance_profile.name
 
   metadata_options {
     http_endpoint          = "enabled"
@@ -133,6 +155,7 @@ resource "aws_instance" "client" {
 }
 */
 
+/*
 resource "aws_iam_instance_profile" "instance_profile" {
   name_prefix = var.name
   role        = aws_iam_role.instance_role.name
@@ -174,3 +197,4 @@ data "aws_iam_policy_document" "auto_discover_cluster" {
     resources = ["*"]
   }
 }
+*/
