@@ -102,11 +102,9 @@ resource "aws_instance" "domain_controller" {
 
   user_data = <<EOF
                 <powershell>
-                  Import-Module ADDSDeployment
                   $password = ConvertTo-SecureString ${var.admin_password} -AsPlainText -Force
                   Add-WindowsFeature -name ad-domain-services -IncludeManagementTools
                   Install-ADDSForest -CreateDnsDelegation:$false -DomainMode Win2012R2 -DomainName ${var.active_directory_domain} -DomainNetbiosName ${var.active_directory_netbios_name} -ForestMode Win2012R2 -InstallDns:$true -SafeModeAdministratorPassword $password -Force:$true
-                  Set-ADAccountPassword -Identity 'CN=Administrator,OU=Users,DC=mydomain,DC=local' -Reset -NewPassword $password
                 </powershell>
               EOF
   
