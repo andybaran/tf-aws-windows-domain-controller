@@ -1,5 +1,5 @@
 # General notes
-- 
+- Windows cloud-init userdata script logs can be found here in an EC2 folder here C:\Windows\system32\config\systemprofile\Local\Temp
 
 # Other code samples
 - 
